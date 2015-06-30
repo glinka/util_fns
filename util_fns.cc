@@ -10,68 +10,25 @@
 
 namespace util_fns {
 
-  std::string create_directory(const std::string dir_basename) {
-    int folder_counter = 0;
-    std::string dir;
-    bool isdir = true;
-    std::stringstream ss;
-    struct stat stat_dir;
-    do {
-      ss.str("");
-      ss << dir_basename << folder_counter << "/";
-      folder_counter++;
-      dir = ss.str();
-      int check = stat(dir.c_str(), &stat_dir);
-      if(check == -1) {
-	if(errno == ENOENT) {
-	  check = mkdir(dir.c_str(), 0700);
-	  if (check != 1) {
-	    isdir = false;
-	  }
-	  else {
-	    perror("mkdir error");
-	    exit(1);
-	  }
-	}
-	else {
-	  perror("mkdir error");
-	  exit(1);
-	}	  
-      }
-    } while (isdir);
-    return dir;
+  bool create_directory(const std::string dir_basename) {
+    int check = mkdir(dir_basename.c_str(), 0700);
+    return check;
   }
 
-  std::vector< std::vector<double> > read_data(std::ifstream& input_file, const char delimiter) {
-    /*
-
-      Saves each row of data as a column in output_data
-    
-      The data is expected to be of the form:
-      x1 y1 z1 ...
-      x2 y2 z2 ...
-      ...
-      thus each "column" of output_data contains all
-      input data of one variable
-
-    */
+  std::vector< std::vector<double> > read_data(std::ifstream& input_file, const char delimiter, const int skip_rows) {
     // count rows
     std::string line;
     int nrows = 0;
-    while(std::getline(input_file, line)) {
+    while(std::getline(input_file, line).good()) {
       nrows++;
     }
-    // count columns
-    // determine number of columns by reading first line
-    int ncols = 0;
-    if(std::getline(input_file, line)) {
-      std::stringstream ss(line);
-      std::string temp;
-      while(std::getline(ss, temp, delimiter)) {
-        ncols++;
-      }
-    }
-    else {
+    // subtract number of file header lines from overall count
+    nrows -= skip_rows;
+    if(!input_file.eof()) {
+      std::cout << "an error occurred attempting to read from file" << std::endl;
+      exit(1);
+    }      
+    if(nrows == 0) {
       std::cout << "empty input file" << std::endl;
       exit(1);
     }
@@ -79,24 +36,47 @@ namespace util_fns {
     // need to clear EOF flag first
     input_file.clear();
     input_file.seekg(0);
+    // count columns
+    // determine number of columns by reading first line
+    int ncols = 0;
+    // skip header before counting columns
+    for(int i = 0; i < skip_rows; i++) {
+      std::getline(input_file, line);
+    }
+    std::getline(input_file, line);
+    std::stringstream ss(line);
+    std::string temp;
+    while(std::getline(ss, temp, delimiter).good()) {
+      ncols++;
+    }
+    // move back to beginning of file
+    input_file.clear();
+    input_file.seekg(0);
     std::string val;
     std::vector< std::vector<double> > output_data(nrows, std::vector<double>(ncols));
-    int i = 0;
-    while(std::getline(input_file, line)) {
+    // skip first 'skip_rows' header lines before reading
+    for(int i = 0; i < skip_rows; i++) {
+      std::getline(input_file, line);
+    }
+    for(int i = 0; i < nrows; i++) {
+      std::getline(input_file, line);
       std::stringstream ss(line);
       int j = 0;
-      while(std::getline(ss, val, delimiter)) {
-	output_data[i][j] = atof(val.c_str());
-	j++;
+      while(std::getline(ss, val, delimiter).good()) {
+	output_data[i][j++] = atof(val.c_str());
       }
-      i++;
       // check that ncols were read
       if(j != ncols) {
-	std::cout << "missing data entries in input file" << std::endl;
+	std::cout << "missing data entries in input file, found " << j << " entries, expected " << ncols << std::endl;
 	exit(1);
       }
     }
     return output_data;
+  }
+
+  std::vector< std::vector<double> > read_data(const std::string input_filename, const char delimiter, const int skip_rows) {
+    std::ifstream input_file(input_filename.c_str());
+    return read_data(input_file, delimiter, skip_rows);
   }
 
 }

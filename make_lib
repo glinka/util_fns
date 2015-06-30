@@ -1,0 +1,4 @@
+#!/bin/bash
+g++ -O3 -fPIC -g -c -o util_fns.o util_fns.cc
+. ~/py_virt_envs/animations/bin/activate
+python ~/site-packages/genlibraries.py util_fns.o --libname util_fns
