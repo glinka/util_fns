@@ -49,6 +49,12 @@ namespace util_fns {
     while(std::getline(ss, temp, delimiter).good()) {
       ncols++;
     }
+    if(!ss.eof()) {
+      std::cout << "an error occurred attempting to read from file" << std::endl;
+      exit(1);
+    }
+    // need to add one more as the final check will fail because of the lack of a trailing delimiter (e.g. '1,2,3' and not '1,2,3,')
+    ncols++;
     // move back to beginning of file
     input_file.clear();
     input_file.seekg(0);
@@ -65,6 +71,8 @@ namespace util_fns {
       while(std::getline(ss, val, delimiter).good()) {
 	output_data[i][j++] = atof(val.c_str());
       }
+      // one more, again no trailing delimiter
+      output_data[i][j++] = atof(val.c_str());
       // check that ncols were read
       if(j != ncols) {
 	std::cout << "missing data entries in input file, found " << j << " entries, expected " << ncols << std::endl;
